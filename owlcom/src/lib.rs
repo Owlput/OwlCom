@@ -3,6 +3,7 @@ use hyper::{client::HttpConnector, Client};
 pub mod ipfs;
 pub mod traits;
 pub mod macros;
+pub mod request_constructor;
 
 #[derive(Debug,Clone)]
 pub struct IpfsApi {

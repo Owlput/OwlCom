@@ -1,8 +1,9 @@
-use hyper::{client::HttpConnector, Body, Request};
+use hyper::{Body, Request, Uri};
+use serde::Deserialize;
 
-use crate::traits::{request::ToRequest, url::ToParam};
+use crate::traits::url::ToParam;
 
-use super::construct_params;
+use crate::request_constructor::*;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Params {
     Quiet(bool),
@@ -49,55 +50,72 @@ impl ToParam for Params {
     }
 }
 
-pub enum Headers {}
-pub struct Add {
-    optional_params: Option<Vec<Params>>,
-}
-impl ToRequest for Add {
-    fn to_request(&mut self, host: &String) -> Request<Body> {
-        let optional_params = match &self.optional_params {
-            None => "".to_string(),
-            Some(vec) => construct_params(vec),
-        };
+pub struct Add;
 
+pub struct Builder{
+    host:Uri,
+    params:String
+}
+
+impl Builder{
+    pub fn quiet(&mut self,val:bool)->&mut self{
+        self.params = format!("{}"self.params)
+    }
+}
+
+impl Add {
+    fn to_request(params: Option<Vec<Params>>, host: &String) -> Request<Body> {
         hyper::Request::builder()
             .method("POST")
             // .header(key, value)
-            .uri(format!("{}/api/v0/add?{}", host, optional_params).as_str())
+            .uri(format!("{}/api/v0/add?{}", host, construct_params(&params)).as_str())
             .body(hyper::Body::from(""))
             .unwrap()
     }
-}
-impl Add {
-    pub fn new(optional_params: Option<Vec<Params>>) -> Self {
-        Self { optional_params }
+    pub fn build(host:Uri)->Builder{
+        Builder { host, params: "".into() }
     }
+}
+#[derive(Deserialize)]
+pub struct Response {
+    bytes: Option<u64>,
+    hash: Option<String>,
+    name: Option<String>,
+    size: Option<String>,
 }
 
 #[cfg(test)]
 mod test {
 
-    use super::*;
     use super::Params;
+    use super::*;
     #[test]
     fn process_req() {
         let host = String::from("http://127.0.0.1:5001");
-        let mut req = Add::new(None);
         let req_tgt = hyper::Request::builder()
             .method("POST")
             // .header(key, value)
             .uri("http://127.0.0.1:5001/api/v0/add?")
             .body(hyper::Body::from(""))
             .unwrap();
-        assert_eq!(format!("{:#?}",req.to_request(&host)),format!("{:#?}",req_tgt));
-        let mut req = Add::new(Some(vec![Params::Silent(true),Params::Inline(true),Params::Hash("omg".into())]));
+        assert_eq!(
+            format!("{:#?}", Add::to_request(None, &host)),
+            format!("{:#?}", req_tgt)
+        );
+        let req = Add::to_request(
+            Some(vec![
+                Params::Silent(true),
+                Params::Inline(true),
+                Params::Hash("omg".into()),
+            ]),
+            &host,
+        );
         let req_tgt = hyper::Request::builder()
             .method("POST")
             // .header(key, value)
             .uri("http://127.0.0.1:5001/api/v0/add?silent=true&inline=true&hash=omg")
             .body(hyper::Body::from(""))
             .unwrap();
-        assert_eq!(format!("{:#?}",req.to_request(&host)),format!("{:#?}",req_tgt));
-        assert_eq!(format!("{:#?}",req.to_request(&host)),format!("{:#?}",req_tgt));
+        assert_eq!(format!("{:#?}", req), format!("{:#?}", req_tgt));
     }
 }

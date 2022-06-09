@@ -1,5 +1,9 @@
 use hyper::Body;
 
-pub trait ToRequest{
-    fn to_request(&mut self,host:&String)->hyper::Request<Body>;
+use super::url::ToParam;
+
+pub trait ConstructRequest {
+    fn to_request<T>(params: Vec<T>, host: &String) -> hyper::Request<Body>
+    where
+        T: ToParam;
 }
