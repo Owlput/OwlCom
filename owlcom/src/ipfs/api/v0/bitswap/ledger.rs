@@ -1,26 +1,18 @@
 use serde::Deserialize;
 
-pub struct Ledger {
-    peer_id: String,
-}
+pub struct Ledger;
 
 impl Ledger {
-    fn to_request(&self, host: &String) -> hyper::Request<hyper::Body> {
+    fn to_request(&self,peer_id:String, host: &String) -> hyper::Request<hyper::Body> {
         hyper::Request::builder()
             .uri(
                 <hyper::Uri as std::str::FromStr>::from_str(
-                    format!("{}/api/v0/bitswap/ledger?arg={}", host, self.peer_id).as_str(),
+                    format!("{}/api/v0/bitswap/ledger?arg={}", host,peer_id).as_str(),
                 )
                 .unwrap(),
             )
             .body(hyper::Body::from(""))
             .unwrap()
-    }
-}
-
-impl Ledger {
-    pub fn new(peer_id: String) -> Self {
-        Ledger { peer_id }
     }
 }
 

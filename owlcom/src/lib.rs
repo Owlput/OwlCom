@@ -2,8 +2,8 @@ use hyper::{client::HttpConnector, Client};
 
 pub mod ipfs;
 pub mod traits;
-pub mod macros;
 pub mod request_constructor;
+mod macros;
 
 #[derive(Debug,Clone)]
 pub struct IpfsApi {
@@ -11,9 +11,9 @@ pub struct IpfsApi {
     client: Option<Client<HttpConnector>>,
 }
 impl IpfsApi {
-    pub fn new_http(addr: &str) -> Self {
+    pub fn new_http(api_addr: &str) -> Self {
         Self {
-            entry: addr.parse().unwrap(),
+            entry: api_addr.parse().unwrap(),
             client: None,
         }
     }

@@ -1,2 +1,2 @@
 [workspace]
-members = ["owlcom","owlcom_derive"]
+members = ["owlcom"]
