@@ -1,5 +1,4 @@
 pub mod url;
+pub mod to_request;
 
-pub trait ToRequest{
-    fn to_request(&self,host:&String)->hyper::Request<hyper::Body>;
-}
+pub use to_request::ToRequest;

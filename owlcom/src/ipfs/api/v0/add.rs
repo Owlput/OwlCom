@@ -1,3 +1,5 @@
+use std::{path::Path, fmt::format};
+
 use hyper::{Body, Request};
 use serde::Deserialize;
 
@@ -7,16 +9,49 @@ use crate::traits::ToRequest;
 pub struct Add {
     optional_params: String,
 }
-impl ToRequest for Add {
-    fn to_request(&self, host: &String) -> Request<Body> {
-        hyper::Request::builder()
-            .method("POST")
-            // .header(key, value)
-            .uri(&format!("{}/api/v0/add?{}", host, self.optional_params))
-            .body(Body::empty())
-            .unwrap()
+impl Add {
+    fn to_request(&self, host: &String, files: Vec<String>) -> Result<(), ()> {
+        let len = files.len();
+        if len < 1 {
+            return Err(());
+        } else if len == 1 {
+            return Ok(());
+        } else {
+            Ok(())
+        }
     }
 }
+
+// fn to_request(host: &String, file: &Path, target_folder:String) -> Result<hyper::Request<hyper::Body>, ()> {
+//     if !file.is_file() || !file.is_absolute() {
+//         return Err(());
+//     }
+//     let filename_ext = match file.file_name(){
+//         Some(os_name) => {
+//             match os_name.to_owned().into_string(){
+//                 Ok(v) => v,
+//                 Err(_) => {return Err(())},
+//             }
+//         },
+//         None => {return Err(())},
+//     };
+    // let filename =  match file.file_prefix(){
+    //     Some(os_name) => {
+    //         match os_name.to_owned().into_string(){
+    //             Ok(v) => v,
+    //             Err(_) => {return Err(())},
+    //         }
+    //     },
+    //     None => {return Err(())},
+    // };
+//     let file_req = hyper::Request::builder()
+//         .method("POST")
+//         .header::<String, String>(
+//             "Abspath".into(),
+//             file.as_os_str().to_owned().into_string().unwrap(),
+//         ).header("Content-Disposition", format!(r#"form-data; name="{}"; filename="{}/{}""#,filename,target_folder,target_folder));
+//     Err(())
+// }
 impl Add {
     pub fn new(optional_params: String) -> Self {
         Self { optional_params }
@@ -51,7 +86,11 @@ impl Builder {
             }
         } else {
             Self {
-                optional_params: format!("{}&quieter={}", self.optional_params, quieter.to_string()),
+                optional_params: format!(
+                    "{}&quieter={}",
+                    self.optional_params,
+                    quieter.to_string()
+                ),
             }
         }
     }
@@ -75,7 +114,11 @@ impl Builder {
             }
         } else {
             Self {
-                optional_params: format!("{}&progress={}", self.optional_params, progress.to_string()),
+                optional_params: format!(
+                    "{}&progress={}",
+                    self.optional_params,
+                    progress.to_string()
+                ),
             }
         }
     }
@@ -87,7 +130,11 @@ impl Builder {
             }
         } else {
             Self {
-                optional_params: format!("{}&trickle={}", self.optional_params, trickle.to_string()),
+                optional_params: format!(
+                    "{}&trickle={}",
+                    self.optional_params,
+                    trickle.to_string()
+                ),
             }
         }
     }
@@ -99,7 +146,11 @@ impl Builder {
             }
         } else {
             Self {
-                optional_params: format!("{}&only-hash={}", self.optional_params, only_hash.to_string()),
+                optional_params: format!(
+                    "{}&only-hash={}",
+                    self.optional_params,
+                    only_hash.to_string()
+                ),
             }
         }
     }
@@ -128,7 +179,11 @@ impl Builder {
             }
         } else {
             Self {
-                optional_params: format!("{}&chunker={}", self.optional_params, chunker.to_string()),
+                optional_params: format!(
+                    "{}&chunker={}",
+                    self.optional_params,
+                    chunker.to_string()
+                ),
             }
         }
     }
@@ -152,7 +207,11 @@ impl Builder {
             }
         } else {
             Self {
-                optional_params: format!("{}&raw-leaves={}", self.optional_params, raw_leaves.to_string()),
+                optional_params: format!(
+                    "{}&raw-leaves={}",
+                    self.optional_params,
+                    raw_leaves.to_string()
+                ),
             }
         }
     }
@@ -176,7 +235,11 @@ impl Builder {
             }
         } else {
             Self {
-                optional_params: format!("{}&fscache={}", self.optional_params, fscache.to_string()),
+                optional_params: format!(
+                    "{}&fscache={}",
+                    self.optional_params,
+                    fscache.to_string()
+                ),
             }
         }
     }
@@ -189,7 +252,11 @@ impl Builder {
             }
         } else {
             Self {
-                optional_params: format!("{}&quiet={}", self.optional_params, cid_version.to_string()),
+                optional_params: format!(
+                    "{}&quiet={}",
+                    self.optional_params,
+                    cid_version.to_string()
+                ),
             }
         }
     }
