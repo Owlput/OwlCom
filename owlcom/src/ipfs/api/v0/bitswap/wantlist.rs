@@ -1,28 +1,15 @@
+use crate::traits::{Endpoint, EndpointResponse};
+use owlcom_derive::{Endpoint, EndpointResponse};
+use serde::Deserialize;
 use std::collections::HashMap;
 
-use reqwest::{Client, Request};
-use serde::Deserialize;
+use crate::{endpoint_gen, impl_opt_param};
 
-use crate::impl_opt_param;
-
-///Show blocks currently on the wantlist.
-pub struct Wantlist<'a> {
-    client: &'a Client,
-    request: Request,
-}
-
-impl<'a> Wantlist<'a> {
-    fn builder() -> Builder {
-        Builder::default()
-    }
-    pub async fn exec(&self) -> Result<Response, reqwest::Error> {
-        self.client
-            .execute(self.request.try_clone().unwrap())
-            .await?
-            .json::<Response>()
-            .await
-    }
-}
+endpoint_gen!(
+    /// Show blocks currently on the wantlist.
+    #[derive(Debug, Endpoint)]
+    Wantlist
+);
 
 #[derive(Default)]
 pub struct Builder {
@@ -32,11 +19,14 @@ impl<'a> Builder {
     pub fn build(self, client: &'a Client, host: &String) -> Wantlist<'a> {
         Wantlist {
             client,
-            request: client.post(format!(
-                "{}/api/v0/bitswap/wantlist?{}",
-                host,
-                self.opt_params.unwrap_or("".into())
-            )).build().unwrap(),
+            request: client
+                .post(format!(
+                    "{}/api/v0/bitswap/wantlist{}",
+                    host,
+                    self.opt_params.unwrap_or("".into())
+                ))
+                .build()
+                .unwrap(),
         }
     }
 }
@@ -46,7 +36,7 @@ impl_opt_param!(
     peer: String
 );
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, EndpointResponse)]
 #[serde(rename_all = "PascalCase")]
 pub struct Response {
     keys: Vec<HashMap<String, String>>,
@@ -78,7 +68,8 @@ mod test {
         let client = reqwest::Client::new();
         Wantlist::builder()
             .build(&client, &"http://localhost:5001".into())
-            .exec().await
+            .exec()
+            .await
             .unwrap();
     }
 }

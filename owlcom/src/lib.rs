@@ -5,6 +5,7 @@ use hyper::{client::HttpConnector, Client};
 pub mod ipfs;
 pub mod libp2p;
 mod macros;
+pub mod traits;
 
 #[derive(Debug, Clone)]
 pub struct IpfsApi {

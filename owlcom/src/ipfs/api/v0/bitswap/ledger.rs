@@ -1,22 +1,14 @@
+use crate::traits::{Endpoint, EndpointResponse};
+use owlcom_derive::{Endpoint, EndpointResponse};
 use serde::Deserialize;
 
 use crate::endpoint_gen;
 
 endpoint_gen!(
-/// Show the current ledger for a peer.
-Ledger
+    /// Show the current ledger for a peer.
+    #[derive(Debug, Endpoint)]
+    Ledger
 );
-
-impl<'a> Ledger<'a> {
-    async fn exec(&self) -> Result<Response, reqwest::Error> {
-        self.client
-            .execute(self.request.try_clone().unwrap())
-            .await
-            .unwrap()
-            .json::<Response>()
-            .await
-    }
-}
 
 #[derive(Default)]
 /// Builder for ``Ledger`` API call.
@@ -35,7 +27,7 @@ impl<'a> Builder {
     }
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq, EndpointResponse)]
 /// On success, the call to this endpoint will return with 200 and this response.
 #[serde(rename_all = "PascalCase")]
 pub struct Response {

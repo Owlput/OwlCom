@@ -1,27 +1,15 @@
-use reqwest::{Client, Request};
+use crate::traits::{Endpoint, EndpointResponse};
+use owlcom_derive::{Endpoint, EndpointResponse};
 use serde::Deserialize;
 use std::collections::HashMap;
 
-use crate::impl_opt_param;
+use crate::{endpoint_gen, impl_opt_param};
 
-/// Show some diagnostic informati&on on the bitswap agent.
-pub struct Stat<'a> {
-    client: &'a Client,
-    request: Request,
-}
-
-impl<'a> Stat<'a> {
-    pub fn builder() -> Builder {
-        Builder::default()
-    }
-    pub async fn exec(&self) -> Result<Response, reqwest::Error> {
-        self.client
-            .execute(self.request.try_clone().unwrap())
-            .await?
-            .json::<Response>()
-            .await
-    }
-}
+endpoint_gen!(
+    /// Show some diagnostic informati&on on the bitswap agent.
+    #[derive(Debug, Endpoint)]
+    Stat
+);
 
 #[derive(Debug, Default)]
 pub struct Builder {
@@ -34,7 +22,7 @@ impl<'a> Builder {
             client,
             request: client
                 .post(format!(
-                    "{}/api/v0/bitswap/stat?{}",
+                    "{}/api/v0/bitswap/stat{}",
                     host,
                     self.opt_params.unwrap_or("".into())
                 ))
@@ -50,7 +38,7 @@ impl_opt_param!(
     human: bool
 );
 
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq, EndpointResponse)]
 #[serde(rename_all = "PascalCase")]
 pub struct Response {
     blocks_received: u64,
@@ -68,6 +56,8 @@ pub struct Response {
 #[cfg(test)]
 mod test {
     use std::collections::HashMap;
+
+    use crate::traits::Endpoint;
 
     use super::{Response, Stat};
 

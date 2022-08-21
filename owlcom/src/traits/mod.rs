@@ -1,4 +1,20 @@
-pub mod url;
-pub mod to_request;
+use async_trait::async_trait;
 
-pub use to_request::ToRequest;
+#[async_trait]
+pub trait Endpoint<T, E>
+where
+    T: EndpointResponse,
+    E: std::error::Error,
+{
+    async fn exec(&self) -> Result<T, E>;
+}
+
+#[async_trait]
+pub trait EndpointOnce<T,E>
+where T:EndpointResponse,
+    E:std::error::Error
+{
+    async fn exec(self)->Result<T,E>;
+}
+
+pub trait EndpointResponse {}

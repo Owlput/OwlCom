@@ -1,12 +1,14 @@
-use std::path::Path;
-
+use crate::traits::EndpointResponse;
+use async_trait::async_trait;
+use owlcom_derive::EndpointResponse;
 use reqwest::{
     multipart::{Form, Part},
     Client,
 };
 use serde::Deserialize;
+use std::path::Path;
 
-use crate::{impl_opt_param, ipfs::api::FileTransferError};
+use crate::{impl_opt_param, ipfs::api::FileTransferError, traits::EndpointOnce};
 
 /// Store input as an IPFS block.  
 /// The request will be constructed on `exec()` called and can only be used once.
@@ -21,7 +23,11 @@ impl<'a, 'b> Put<'a, 'b> {
     pub fn builder() -> Builder {
         Builder::default()
     }
-    pub async fn exec(self) -> Result<Response, FileTransferError> {
+}
+
+#[async_trait]
+impl<'a, 'b> EndpointOnce<Response, FileTransferError> for Put<'a, 'b> {
+    async fn exec(self) -> Result<Response, FileTransferError> {
         if !self.path.exists() {
             return Err(FileTransferError::FileNotExist);
         }
@@ -36,7 +42,7 @@ impl<'a, 'b> Put<'a, 'b> {
         match self
             .client
             .post(format!(
-                "{}/api/v0/block/put?{}",
+                "{}/api/v0/block/put{}",
                 self.host,
                 self.opt_params.unwrap_or("".into())
             ))
@@ -105,7 +111,7 @@ impl<'a, 'b> Builder {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, EndpointResponse)]
 #[serde(rename_all = "PascalCase")]
 pub struct Response {
     key: String,

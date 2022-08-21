@@ -1,21 +1,14 @@
+use crate::traits::{Endpoint, EndpointResponse};
+use owlcom_derive::{Endpoint, EndpointResponse};
 use serde::Deserialize;
 
 use crate::endpoint_gen;
 
 endpoint_gen!(
     /// Print information of a raw IPFS block.
+    #[derive(Debug, Endpoint)]
     Stat
 );
-
-impl<'a> Stat<'a> {
-    pub async fn exec(&self) -> Result<Response, reqwest::Error> {
-        self.client
-            .execute(self.request.try_clone().unwrap())
-            .await?
-            .json::<Response>()
-            .await
-    }
-}
 
 #[derive(Debug, Default)]
 pub struct Builder;
@@ -32,7 +25,7 @@ impl<'a> Builder {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, EndpointResponse)]
 #[serde(rename_all = "PascalCase")]
 pub struct Response {
     key: String,

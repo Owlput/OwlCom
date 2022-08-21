@@ -1,12 +1,18 @@
 use std::path::Path;
 
+use async_trait::async_trait;
+use owlcom_derive::EndpointResponse;
 use reqwest::{
     multipart::{Form, Part},
     Client,
 };
 use serde::Deserialize;
 
-use crate::{impl_opt_param, ipfs::api::FileTransferError};
+use crate::{
+    impl_opt_param,
+    ipfs::api::FileTransferError,
+    traits::{EndpointOnce, EndpointResponse},
+};
 
 /// Add a file or directory(not supported yet) to IPFS.
 /// The request will be constructed after `exec()` called and can only be used once.
@@ -18,7 +24,8 @@ pub struct Add<'a, 'b> {
     opt_params: Option<String>,
 }
 
-impl<'a, 'b> Add<'a, 'b> {
+#[async_trait]
+impl<'a, 'b> EndpointOnce<Response, FileTransferError> for Add<'a, 'b> {
     async fn exec(self) -> Result<Response, FileTransferError> {
         let filename = self.path.to_str().unwrap().to_string();
         let file = match tokio::fs::read(self.path).await {
@@ -28,7 +35,7 @@ impl<'a, 'b> Add<'a, 'b> {
         match self
             .client
             .post(format!(
-                "{}/api/v0/add?{}",
+                "{}/api/v0/add{}",
                 self.host,
                 self.opt_params.unwrap_or("".into())
             ))
@@ -59,11 +66,6 @@ pub struct Builder {
 impl<'a, 'b> Builder {
     pub fn new() -> Self {
         Self::default()
-    }
-    /// Overwrite the current optional params.
-    pub fn set_opt_param(mut self, param: String) -> Self {
-        self.opt_params = Some(param);
-        self
     }
     pub fn build(self, client: &'a Client, host: &String, path: &'b Path) -> Add<'a, 'b> {
         Add {
@@ -157,7 +159,7 @@ impl_opt_param!(
     inline: bool
 );
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, EndpointResponse)]
 #[serde(rename_all = "PascalCase")]
 pub struct Response {
     bytes: Option<u64>,
@@ -169,6 +171,8 @@ pub struct Response {
 #[cfg(test)]
 mod test {
     use std::path::Path;
+
+    use crate::traits::EndpointOnce;
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[ignore = "actual-file-needed"]
     async fn test() {

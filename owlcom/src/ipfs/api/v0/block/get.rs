@@ -1,30 +1,60 @@
-use reqwest::{Client, Request};
+use crate::{
+    endpoint_gen,
+    traits::{Endpoint, EndpointResponse},
+};
+use async_trait::async_trait;
+use owlcom_derive::EndpointResponse;
 
-#[derive(Debug)]
-pub struct Get<'a> {
-    client: &'a Client,
-    request: Request,
-}
-impl<'a> Get<'a> {
-    pub fn builder() -> Builder {
-        Builder
-    }
- pub async fn exec(&self)->Result<hyper::body::Bytes, reqwest::Error>{
-        self.client
+endpoint_gen!(
+    /// Get a raw IPFS block.
+    #[derive(Debug)]
+    Get
+);
+
+#[async_trait]
+impl<'a> Endpoint<Response, reqwest::Error> for Get<'a> {
+    async fn exec(&self) -> Result<Response, reqwest::Error> {
+        match self
+            .client
             .execute(self.request.try_clone().unwrap())
             .await?
-            .bytes().await
+            .bytes()
+            .await
+        {
+            Ok(v) => return Ok(v.into()),
+            Err(e) => return Err(e),
+        }
     }
 }
 
+#[derive(Debug, Default)]
 pub struct Builder;
 impl<'a> Builder {
-    pub fn build(self,client: &'a Client,host:&String, block_cid: &String) -> Get<'a> {
+    pub fn build(self, client: &'a Client, host: &String, block_cid: &String) -> Get<'a> {
         Get {
             client,
             request: client
-                .post(format!("{}/api/v0/block/get?arg={}", host, block_cid)).build().unwrap(),
+                .post(format!("{}/api/v0/block/get?arg={}", host, block_cid))
+                .build()
+                .unwrap(),
         }
+    }
+}
+
+#[derive(Debug, EndpointResponse)]
+pub struct Response {
+    bytes: hyper::body::Bytes,
+}
+
+impl From<hyper::body::Bytes> for Response {
+    fn from(bytes: hyper::body::Bytes) -> Self {
+        Response { bytes }
+    }
+}
+
+impl Into<hyper::body::Bytes> for Response {
+    fn into(self) -> hyper::body::Bytes {
+        self.bytes
     }
 }
 
