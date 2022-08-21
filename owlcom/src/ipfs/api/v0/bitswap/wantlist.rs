@@ -1,46 +1,50 @@
 use std::collections::HashMap;
 
+use reqwest::{Client, Request};
 use serde::Deserialize;
 
+use crate::impl_opt_param;
+
 ///Show blocks currently on the wantlist.
-pub struct Wantlist {
-    opt_args: String,
+pub struct Wantlist<'a> {
+    client: &'a Client,
+    request: Request,
 }
 
-impl Wantlist {
+impl<'a> Wantlist<'a> {
     fn builder() -> Builder {
         Builder::default()
     }
-    fn to_request(&self, host: &String) -> hyper::Request<hyper::Body> {
-        hyper::Request::builder()
-            .uri(
-                <hyper::Uri as std::str::FromStr>::from_str(&format!(
-                    "http://{}/api/v0/bitswap/wantlist?{}",
-                    host, self.opt_args
-                ))
-                .unwrap(),
-            ).method("POST")
-            .body(hyper::Body::from(""))
-            .unwrap()
+    pub async fn exec(&self) -> Result<Response, reqwest::Error> {
+        self.client
+            .execute(self.request.try_clone().unwrap())
+            .await?
+            .json::<Response>()
+            .await
     }
 }
 
 #[derive(Default)]
 pub struct Builder {
-    opt_args: String,
+    opt_params: Option<String>,
 }
-impl Builder {
-    pub fn peer(self, peer: String) -> Self {
-        Self {
-            opt_args: format!("peer={}", peer),
-        }
-    }
-    pub fn build(self) -> Wantlist {
+impl<'a> Builder {
+    pub fn build(self, client: &'a Client, host: &String) -> Wantlist<'a> {
         Wantlist {
-            opt_args: self.opt_args,
+            client,
+            request: client.post(format!(
+                "{}/api/v0/bitswap/wantlist?{}",
+                host,
+                self.opt_params.unwrap_or("".into())
+            )).build().unwrap(),
         }
     }
 }
+
+impl_opt_param!(
+    /// Specify which peer to show wantlist for. Required: no.
+    peer: String
+);
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "PascalCase")]
@@ -71,21 +75,10 @@ mod test {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[ignore]
     async fn online_test() {
-        let req = Wantlist::builder()
-            .build()
-            .to_request(&"127.0.0.1:5001".into());
-        let res = hyper::Client::new().request(req).await.unwrap();
-        println!(
-            "{:?}",
-            serde_json::from_slice::<Response>(
-                &match hyper::body::to_bytes(res.into_body()).await {
-                    Ok(b) => b,
-                    Err(e) => {
-                        panic!("unexpected error: {}", e)
-                    }
-                }
-            )
-            .unwrap()
-        );
+        let client = reqwest::Client::new();
+        Wantlist::builder()
+            .build(&client, &"http://localhost:5001".into())
+            .exec().await
+            .unwrap();
     }
 }

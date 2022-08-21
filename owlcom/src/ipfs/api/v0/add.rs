@@ -1,353 +1,189 @@
-use std::{fmt::format, path::Path};
+use std::path::Path;
 
-use hyper::{Body, Request};
+use reqwest::{
+    multipart::{Form, Part},
+    Client,
+};
 use serde::Deserialize;
 
-use crate::impl_opt_param;
+use crate::{impl_opt_param, ipfs::api::FileTransferError};
 
-#[derive(Debug, Clone, Default)]
-pub struct Add {
-    optional_params: String,
+/// Add a file or directory(not supported yet) to IPFS.
+/// The request will be constructed after `exec()` called and can only be used once.
+#[derive(Debug)]
+pub struct Add<'a, 'b> {
+    client: &'a Client,
+    path: &'b Path,
+    host: String,
+    opt_params: Option<String>,
 }
-impl Add {
-    fn to_request(&self, host: &String, files: Vec<String>) -> Result<(), ()> {
-        let len = files.len();
-        if len < 1 {
-            return Err(());
-        } else if len == 1 {
-            return Ok(());
-        } else {
-            Ok(())
+
+impl<'a, 'b> Add<'a, 'b> {
+    async fn exec(self) -> Result<Response, FileTransferError> {
+        let filename = self.path.to_str().unwrap().to_string();
+        let file = match tokio::fs::read(self.path).await {
+            Ok(v) => v,
+            Err(e) => return Err(FileTransferError::Fs(e)),
+        };
+        match self
+            .client
+            .post(format!(
+                "{}/api/v0/add?{}",
+                self.host,
+                self.opt_params.unwrap_or("".into())
+            ))
+            .multipart(Form::new().part(filename, Part::bytes(file)))
+            .send()
+            .await
+        {
+            Ok(res) => match res.json().await {
+                Ok(res) => return Ok(res),
+                Err(e) => return Err(FileTransferError::Reqwest(e)),
+            },
+            Err(e) => return Err(FileTransferError::Reqwest(e)),
         }
     }
 }
-
-// fn to_request(host: &String, file: &Path, target_folder:String) -> Result<hyper::Request<hyper::Body>, ()> {
-//     if !file.is_file() || !file.is_absolute() {
-//         return Err(());
-//     }
-//     let filename_ext = match file.file_name(){
-//         Some(os_name) => {
-//             match os_name.to_owned().into_string(){
-//                 Ok(v) => v,
-//                 Err(_) => {return Err(())},
-//             }
-//         },
-//         None => {return Err(())},
-//     };
-// let filename =  match file.file_prefix(){
-//     Some(os_name) => {
-//         match os_name.to_owned().into_string(){
-//             Ok(v) => v,
-//             Err(_) => {return Err(())},
-//         }
-//     },
-//     None => {return Err(())},
-// };
-//     let file_req = hyper::Request::builder()
-//         .method("POST")
-//         .header::<String, String>(
-//             "Abspath".into(),
-//             file.as_os_str().to_owned().into_string().unwrap(),
-//         ).header("Content-Disposition", format!(r#"form-data; name="{}"; filename="{}/{}""#,filename,target_folder,target_folder));
-//     Err(())
-// }
-impl Add {
-    pub fn new(optional_params: String) -> Self {
-        Self { optional_params }
+impl<'a, 'b> Add<'a, 'b> {
+    pub fn builder() -> Builder {
+        Builder::default()
     }
 }
+
+/// For more documemtation of this API, please refer to [official IPFS documentation][https://docs.ipfs.tech/reference/kubo/rpc/#api-v0-add].
 #[derive(Debug, Default)]
 pub struct Builder {
-    changed: bool,
-    optional_params: String,
+    opt_params: Option<String>,
 }
 
-impl_opt_param!(quiet:bool);
-impl Builder {
+impl<'a, 'b> Builder {
     pub fn new() -> Self {
         Self::default()
     }
-    /// Write minimal output.
-    // pub fn quiet(self, quiet: bool) -> Self {
-    //     if self.changed {
-    //         Self {
-    //             changed: true,
-    //             optional_params: format!("quiet={}", quiet.to_string()),
-    //         }
-    //     } else {
-    //         Self {
-    //             changed: true,
-    //             optional_params: format!("{}&quiet={}", self.optional_params, quiet.to_string()),
-    //         }
-    //     }
-    // }
-    /// Write only final hash.
-    pub fn quieter(self, quieter: bool) -> Self {
-        if self.changed {
-            Self {
-                changed: true,
-                optional_params: format!("quieter={}", quieter.to_string()),
-            }
-        } else {
-            Self {
-                changed: true,
-                optional_params: format!(
-                    "{}&quieter={}",
-                    self.optional_params,
-                    quieter.to_string()
-                ),
-            }
-        }
+    /// Overwrite the current optional params.
+    pub fn set_opt_param(mut self, param: String) -> Self {
+        self.opt_params = Some(param);
+        self
     }
-    /// Write no output.
-    pub fn silent(self, silent: bool) -> Self {
-        if self.changed {
-            Self {
-                changed: true,
-                optional_params: format!("silent={}", silent.to_string()),
-            }
-        } else {
-            Self {
-                changed: true,
-                optional_params: format!("{}&silent={}", self.optional_params, silent.to_string()),
-            }
-        }
-    }
-    /// Stream progress data.
-    pub fn progress(self, progress: bool) -> Self {
-        if self.changed {
-            Self {
-                changed: true,
-                optional_params: format!("progress={}", progress.to_string()),
-            }
-        } else {
-            Self {
-                changed: true,
-                optional_params: format!(
-                    "{}&progress={}",
-                    self.optional_params,
-                    progress.to_string()
-                ),
-            }
-        }
-    }
-    /// Use trickle-dag format for dag generation.
-    pub fn trickle(self, trickle: bool) -> Self {
-        if self.changed {
-            Self {
-                changed: true,
-                optional_params: format!("trickle={}", trickle.to_string()),
-            }
-        } else {
-            Self {
-                changed: true,
-                optional_params: format!(
-                    "{}&trickle={}",
-                    self.optional_params,
-                    trickle.to_string()
-                ),
-            }
-        }
-    }
-    /// Only chunk and hash - do not write to disk.
-    pub fn only_hash(self, only_hash: bool) -> Self {
-        if self.changed {
-            Self {
-                changed: true,
-                optional_params: format!("only-hash={}", only_hash.to_string()),
-            }
-        } else {
-            Self {
-                changed: true,
-                optional_params: format!(
-                    "{}&only-hash={}",
-                    self.optional_params,
-                    only_hash.to_string()
-                ),
-            }
-        }
-    }
-    /// Wrap files with a directory object.
-    pub fn wrap_with_directory(self, wrap_with_directory: bool) -> Self {
-        if self.changed {
-            Self {
-                changed: true,
-                optional_params: format!("wrap-with-directory={}", wrap_with_directory.to_string()),
-            }
-        } else {
-            Self {
-                changed: true,
-                optional_params: format!(
-                    "{}&wrap-with-directory={}",
-                    self.optional_params,
-                    wrap_with_directory.to_string()
-                ),
-            }
-        }
-    }
-    /// Chunking algorithm, size-\[bytes\], rabin-\[min\]-\[avg\]-\[max\] or buzhash.
-    /// Default to ``size-262144``.
-    pub fn chunker(self, chunker: String) -> Self {
-        if self.changed {
-            Self {
-                changed: true,
-                optional_params: format!("chunker={}", chunker),
-            }
-        } else {
-            Self {
-                changed: true,
-                optional_params: format!(
-                    "{}&chunker={}",
-                    self.optional_params,
-                    chunker.to_string()
-                ),
-            }
-        }
-    }
-    /// Pin this object when adding. Default to ``true``.
-    pub fn pin(self, pin: bool) -> Self {
-        if self.changed {
-            Self {
-                changed: true,
-                optional_params: format!("pin={}", pin.to_string()),
-            }
-        } else {
-            Self {
-                changed: true,
-                optional_params: format!("{}&pin={}", self.optional_params, pin.to_string()),
-            }
-        }
-    }
-    /// Use raw blocks for leaf nodes.
-    pub fn raw_leaves(self, raw_leaves: bool) -> Self {
-        if self.changed {
-            Self {
-                changed: true,
-                optional_params: format!("raw-leaves={}", raw_leaves.to_string()),
-            }
-        } else {
-            Self {
-                changed: true,
-                optional_params: format!(
-                    "{}&raw-leaves={}",
-                    self.optional_params,
-                    raw_leaves.to_string()
-                ),
-            }
-        }
-    }
-    /// Add the file using filestore. Implies raw-leaves. (experimental).
-    pub fn nocopy(self, nocopy: bool) -> Self {
-        if self.changed {
-            Self {
-                changed: true,
-                optional_params: format!("nocopy={}", nocopy.to_string()),
-            }
-        } else {
-            Self {
-                changed: true,
-                optional_params: format!("{}&nocopy={}", self.optional_params, nocopy.to_string()),
-            }
-        }
-    }
-    /// Check the filestore for pre-existing blocks. (experimental).
-    pub fn fscache(self, fscache: bool) -> Self {
-        if self.changed {
-            Self {
-                changed: true,
-                optional_params: format!("fscache={}", fscache.to_string()),
-            }
-        } else {
-            Self {
-                changed: true,
-                optional_params: format!(
-                    "{}&fscache={}",
-                    self.optional_params,
-                    fscache.to_string()
-                ),
-            }
-        }
-    }
-    /// CID version. Defaults to ``0`` unless an option that depends on ``CIDv1`` is passed.
-    /// Passing version ``1`` will cause the raw-leaves option to default to ``true``.
-    pub fn cid_version(self, cid_version: u64) -> Self {
-        if self.changed {
-            Self {
-                changed: true,
-                optional_params: format!("cid-version={}", cid_version.to_string()),
-            }
-        } else {
-            Self {
-                changed: true,
-                optional_params: format!(
-                    "{}&quiet={}",
-                    self.optional_params,
-                    cid_version.to_string()
-                ),
-            }
-        }
-    }
-    /// Hash function to use.
-    /// Implies ``CIDv1`` if not ``sha2-256``. (experimental).
-    /// Default to ``sha2-256``
-    pub fn hash(self, hash: String) -> Self {
-        if self.changed {
-            Self {
-                changed: true,
-                optional_params: format!("hash={}", hash),
-            }
-        } else {
-            Self {
-                changed: true,
-                optional_params: format!("{}&hash={}", self.optional_params, hash.to_string()),
-            }
-        }
-    }
-    /// Inline small blocks into CIDs. (experimental).
-    pub fn inline(self, inline: bool) -> Self {
-        if self.changed {
-            Self {
-                changed: true,
-                optional_params: format!("inline={}", inline.to_string()),
-            }
-        } else {
-            Self {
-                changed: true,
-                optional_params: format!("{}&inline={}", self.optional_params, inline.to_string()),
-            }
-        }
-    }
-    /// Maximum block size to inline. (experimental).
-    pub fn inline_limit(self, inline_limit: bool) -> Self {
-        if self.changed {
-            Self {
-                changed: true,
-                optional_params: format!("inline-limit={}", inline_limit.to_string()),
-            }
-        } else {
-            Self {
-                changed: true,
-                optional_params: format!(
-                    "{}&inline-limit={}",
-                    self.optional_params,
-                    inline_limit.to_string()
-                ),
-            }
-        }
-    }
-    pub fn build(self) -> Add {
+    pub fn build(self, client: &'a Client, host: &String, path: &'b Path) -> Add<'a, 'b> {
         Add {
-            optional_params: self.optional_params,
+            client,
+            path,
+            host: host.clone(),
+            opt_params: self.opt_params,
+        }
+    }
+    /// Only chunk and hash - do not write to disk. Required: no.
+    pub fn only_hash(self, arg: bool) -> Self {
+        match self.opt_params {
+            None => Self {
+                opt_params: Some(format!("only-hash={}", arg.to_string())),
+            },
+            Some(v) => Self {
+                opt_params: Some(format!("{}&only-hash={}", v, arg.to_string())),
+            },
+        }
+    }
+    /// Wrap files with a directory object. Required: no.
+    pub fn wrap_with_directory(self, arg: bool) -> Self {
+        match self.opt_params {
+            None => Self {
+                opt_params: Some(format!("wrap-with-directory={}", arg.to_string())),
+            },
+            Some(v) => Self {
+                opt_params: Some(format!("{}&wrap-with-directory={}", v, arg.to_string())),
+            },
+        }
+    }
+    /// Use raw blocks for leaf nodes. Required: no.
+    pub fn raw_leaves(self, arg: bool) -> Self {
+        match self.opt_params {
+            None => Self {
+                opt_params: Some(format!("{}=raw-leaves", arg.to_string())),
+            },
+            Some(v) => Self {
+                opt_params: Some(format!("{}&raw-leaves={}", v, arg.to_string())),
+            },
+        }
+    }
+    /// CID version. Defaults to 0 unless an option that depends on CIDv1 is passed.
+    /// Passing version 1 will cause the raw-leaves option to default to true. Required: no.
+    pub fn cid_version(self, arg: isize) -> Self {
+        match self.opt_params {
+            None => Self {
+                opt_params: Some(format!("cid-version={}", arg.to_string())),
+            },
+            Some(v) => Self {
+                opt_params: Some(format!("{}&cid-version={}", v, arg.to_string())),
+            },
+        }
+    }
+    /// Maximum block size to inline. (experimental). Default: `32`. Required: no.
+    pub fn inline_limit(self, arg: isize) -> Self {
+        match self.opt_params {
+            None => Self {
+                opt_params: Some(format!("inline-limit={}", arg.to_string())),
+            },
+            Some(v) => Self {
+                opt_params: Some(format!("{}&inline-limit={}", v, arg.to_string())),
+            },
         }
     }
 }
+impl_opt_param!(
+    /// Write minimal output. Required: no.
+    quiet: bool,
+    /// Write only final hash. Required: no.
+    quieter: bool,
+    /// Write no output. Required: no.
+    silent: bool,
+    /// Stream progress data. Required: no.
+    progress: bool,
+    /// Use trickle-dag format for dag generation. Required: no.
+    trickle: bool,
+    /// Chunking algorithm, size-\[bytes\], rabin-\[min\]-\[avg\]-\[max\] or buzhash.   
+    /// Default: `size-262144`
+    chunker: String,
+    /// Pin this object when adding. Default: `true`. Required: no.
+    pin: bool,
+    /// Add the file using filestore. Implies raw-leaves. (experimental). Required: no.
+    nocopy: bool,
+    /// Check the filestore for pre-existing blocks. (experimental). Required: no.
+    fscache: bool,
+    /// Hash function to use. Implies CIDv1 if not sha2-256. (experimental).   
+    /// Default: `sha2-256`. Required: no.
+    hash: String,
+    /// Inline small blocks into CIDs. (experimental). Required: no.
+    inline: bool
+);
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct Response {
     bytes: Option<u64>,
     hash: Option<String>,
     name: Option<String>,
     size: Option<String>,
+}
+
+#[cfg(test)]
+mod test {
+    use std::path::Path;
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[ignore = "actual-file-needed"]
+    async fn test() {
+        let client = reqwest::Client::new();
+        println!(
+            "{:#?}",
+            super::Add::builder()
+                .quieter(true)
+                .build(
+                    &client,
+                    &"http://127.0.0.1:5001".into(),
+                    &Path::new(r#"./Cargo.toml"#)
+                )
+                .exec()
+                .await
+        )
+    }
 }

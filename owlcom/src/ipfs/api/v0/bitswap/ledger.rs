@@ -1,30 +1,20 @@
 use serde::Deserialize;
 
-use crate::traits::ToRequest;
+use crate::endpoint_gen;
 
+endpoint_gen!(
 /// Show the current ledger for a peer.
-/// Required argument: arg[string]: The PeerID (B58) of the ledger to inspect.
-pub struct Ledger {
-    required_args: String,
-}
-impl Ledger {
-    pub fn builder() -> Builder {
-        Builder::default()
-    }
-}
+Ledger
+);
 
-impl ToRequest for Ledger {
-    fn to_request(&self, host: &String) -> hyper::Request<hyper::Body> {
-        hyper::Request::builder()
-            .uri(
-                <hyper::Uri as std::str::FromStr>::from_str(
-                    format!("{}/api/v0/bitswap/ledger?{}", host, self.required_args).as_str(),
-                )
-                .unwrap(),
-            )
-            .method("POST")
-            .body(hyper::Body::from(""))
+impl<'a> Ledger<'a> {
+    async fn exec(&self) -> Result<Response, reqwest::Error> {
+        self.client
+            .execute(self.request.try_clone().unwrap())
+            .await
             .unwrap()
+            .json::<Response>()
+            .await
     }
 }
 
@@ -32,15 +22,20 @@ impl ToRequest for Ledger {
 /// Builder for ``Ledger`` API call.
 pub struct Builder;
 
-impl Builder {
-    pub fn build(self, peer_id: String) -> Ledger {
+impl<'a> Builder {
+    /// Required argument: arg[string]: The PeerID (B58) of the ledger to inspect.
+    pub fn build(self, client: &'a Client, host: &String, peer_id: String) -> Ledger<'a> {
         Ledger {
-            required_args: format!("arg={}", peer_id),
+            client,
+            request: client
+                .post(format!("{}/api/v0/bitswap/ledger?arg={}", host, peer_id))
+                .build()
+                .unwrap(),
         }
     }
 }
 
-#[derive(Deserialize,Debug,PartialEq)]
+#[derive(Deserialize, Debug, PartialEq)]
 /// On success, the call to this endpoint will return with 200 and this response.
 #[serde(rename_all = "PascalCase")]
 pub struct Response {
@@ -65,6 +60,6 @@ mod test {
             sent: 0,
             value: 0.0,
         };
-        assert_eq!(result,reference);
+        assert_eq!(result, reference);
     }
 }

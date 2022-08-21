@@ -1,30 +1,54 @@
-use std::collections::HashMap;
+use reqwest::{Client, Request};
 use serde::Deserialize;
+use std::collections::HashMap;
 
-#[derive(Default)]
-/// Show some diagnostic information on the bitswap agent.
-pub struct Stat {
-    opt_args: String,
+use crate::impl_opt_param;
+
+/// Show some diagnostic informati&on on the bitswap agent.
+pub struct Stat<'a> {
+    client: &'a Client,
+    request: Request,
 }
 
-impl Stat {
-    pub fn new() -> Self {
-        Self::default()
+impl<'a> Stat<'a> {
+    pub fn builder() -> Builder {
+        Builder::default()
     }
-    pub fn to_request(self, host: &String) -> hyper::Request<hyper::Body> {
-        hyper::Request::builder()
-            .uri(
-                <hyper::Uri as std::str::FromStr>::from_str(&format!(
-                    "http://{}/api/v0/bitswap/stat?{}",
-                    host, self.opt_args
+    pub async fn exec(&self) -> Result<Response, reqwest::Error> {
+        self.client
+            .execute(self.request.try_clone().unwrap())
+            .await?
+            .json::<Response>()
+            .await
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct Builder {
+    opt_params: Option<String>,
+}
+
+impl<'a> Builder {
+    pub fn build(self, client: &'a Client, host: &String) -> Stat<'a> {
+        Stat {
+            client,
+            request: client
+                .post(format!(
+                    "{}/api/v0/bitswap/stat?{}",
+                    host,
+                    self.opt_params.unwrap_or("".into())
                 ))
+                .build()
                 .unwrap(),
-            )
-            .method("POST")
-            .body(hyper::Body::from(""))
-            .unwrap()
+        }
     }
 }
+impl_opt_param!(
+    /// Print extra information. Required: no.
+    verbose: bool,
+    /// Print sizes in human readable format (e.g., 1K 234M 2G). Required: no.
+    human: bool
+);
 
 #[derive(Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "PascalCase")]
@@ -74,19 +98,11 @@ mod test {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[ignore]
     async fn online_test() {
-        let req = Stat::new().to_request(&"127.0.0.1:5001".to_string());
-        let res = hyper::Client::new().request(req).await.unwrap();
-        println!(
-            "{:?}",
-            serde_json::from_slice::<Response>(
-                &match hyper::body::to_bytes(res.into_body()).await {
-                    Ok(b) => b,
-                    Err(e) => {
-                        panic!("unexpected error: {}", e)
-                    }
-                }
-            )
-            .unwrap()
-        );
+        let client = reqwest::Client::new();
+        Stat::builder()
+            .build(&client, &"http://localhost:5001".into())
+            .exec()
+            .await
+            .unwrap();
     }
 }

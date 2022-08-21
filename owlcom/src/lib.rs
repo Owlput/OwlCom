@@ -1,11 +1,10 @@
+#![feature(path_file_prefix)]
 #[allow(dead_code)]
 use hyper::{client::HttpConnector, Client};
 
 pub mod ipfs;
-mod macros;
-pub mod traits;
 pub mod libp2p;
-mod helpers;
+mod macros;
 
 #[derive(Debug, Clone)]
 pub struct IpfsApi {

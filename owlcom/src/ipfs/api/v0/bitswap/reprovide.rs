@@ -1,3 +1,4 @@
+use reqwest::Client;
 use serde::Deserialize;
 
 /// Trigger reprovider.   
@@ -5,23 +6,16 @@ use serde::Deserialize;
 pub struct Reprovide;
 
 impl Reprovide {
-    pub fn new() -> Self {
-        Self
-    }
-    pub fn to_request(self, host: &String) -> hyper::Request<hyper::Body> {
-        hyper::Request::builder()
-            .uri(
-                <hyper::Uri as std::str::FromStr>::from_str(
-                    format!("http://{}/api/v0/bitswap/reprovide", host).as_str(),
-                )
-                .unwrap(),
-            )
-            .method("POST")
-            .body(hyper::Body::from(""))
-            .unwrap()
+    pub async fn exec(client: &Client, host: &String) -> Result<Response, reqwest::Error> {
+        client
+            .post(format!("{}/api/v0/bitswap/reprovide", host))
+            .send()
+            .await?
+            .json::<Response>()
+            .await
     }
 }
-#[derive(Debug,PartialEq,Deserialize)]
+#[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Response {
     message: String,
@@ -32,24 +26,14 @@ pub struct Response {
 
 #[cfg(test)]
 mod test {
+    use reqwest::Client;
+
     use super::Reprovide;
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[ignore]
     async fn online_test() {
-        let req = Reprovide::new().to_request(&"127.0.0.1:5001".to_string());
-        let res = hyper::Client::new().request(req).await.unwrap();
-        println!(
-            "{:?}",
-            String::from_utf8(
-                match hyper::body::to_bytes(res.into_body()).await {
-                    Ok(b) => b,
-                    Err(e) => {
-                        panic!("unexpected error: {}", e)
-                    }
-                }
-                .to_vec()
-            )
-            .unwrap()
-        );
+        Reprovide::exec(&Client::new(), &"http://localhost:5001".into())
+            .await
+            .unwrap();
     }
 }

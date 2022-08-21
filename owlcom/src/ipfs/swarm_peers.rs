@@ -1,36 +1,3 @@
-
-pub enum Params{
-    Verbose(bool),
-    Streams(bool),
-    Latency(bool),
-    Direction(bool),
-}
-pub struct Stream{
-    protocol:String,
-}
-pub struct Peer{
-    addr:String,
-    peer:String,
-    latency:String,
-    muxer:String,
-    direction:String,
-    streams:Vec<Stream>
-}
-impl Peer{
-
-}
-pub struct SwarmPeers{
-    
-}
-
-// impl IpfsApi{
-//     pub async fn get_peers(&self)->Vec<Peer>{
-
-//     }
-// }
-
-use crate::traits::url::ToParam;
-
 #[cfg(test)]
 mod test{
 
