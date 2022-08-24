@@ -12,7 +12,7 @@ macro_rules! impl_opt_param {
             pub fn $name(self, arg: $type) -> Self {
                 match self.opt_params {
                     None=>Self {
-                        opt_params: Some(format!("?{}={}",stringify!($name), arg.to_string())),
+                        opt_params: Some(format!("{}={}",stringify!($name), arg.to_string())),
                     },
                     Some(v)=> Self {
                         opt_params: Some(format!("{}&{}={}", v,stringify!($name) ,arg.to_string())),

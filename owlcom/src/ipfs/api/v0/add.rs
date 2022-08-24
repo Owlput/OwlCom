@@ -35,7 +35,7 @@ impl<'a, 'b> EndpointOnce<Response, FileTransferError> for Add<'a, 'b> {
         match self
             .client
             .post(format!(
-                "{}/api/v0/add{}",
+                "{}/api/v0/add?{}",
                 self.host,
                 self.opt_params.unwrap_or("".into())
             ))
