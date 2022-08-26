@@ -1,5 +1,5 @@
 use crate::traits::{Endpoint, EndpointResponse};
-use crate::{endpoint_gen, impl_opt_param};
+use crate::{endpoint_gen, impl_opt_param,builder_impl_with_opt_params};
 use owlcom_derive::{Endpoint, EndpointResponse};
 use serde::Deserialize;
 
@@ -74,26 +74,13 @@ pub mod codecs {
         Codecs
     );
 
-    #[derive(Debug, Default)]
-    pub struct Builder {
-        opt_params: Option<String>,
-    }
-
-    impl<'a> Builder {
-        pub fn build(self, client: &'a Client, host: &String) -> Codecs<'a> {
-            Codecs {
-                client,
-                request: client
-                    .post(format!(
-                        "{}/api/v0/codecs?{}",
-                        host,
-                        self.opt_params.unwrap_or("".into())
-                    ))
-                    .build()
-                    .unwrap(),
-            }
-        }
-    }
+    builder_impl_with_opt_params!(
+        Codecs:"/api/v0/cid/hashes",
+        /// also include numeric codes.
+        numeric:bool,
+        /// list only codecs supported by go-ipfs commands.
+        supported:bool
+    );
 
     #[derive(Debug, Deserialize, EndpointResponse)]
     #[serde(transparent)]
@@ -158,32 +145,21 @@ pub mod format {
     }
 }
 pub mod hashes {
+    
+
     use super::*;
     endpoint_gen!(
         /// List available multihashes.
         Hashes
     );
 
-    #[derive(Debug, Default)]
-    pub struct Builder {
-        opt_params: Option<String>,
-    }
-
-    impl<'a> Builder {
-        pub fn build(self, client: &'a Client, host: &String) -> Hashes<'a> {
-            Hashes {
-                client,
-                request: client
-                    .post(format!(
-                        "{}/api/v0/cid/hashes?{}",
-                        host,
-                        self.opt_params.unwrap_or("".into())
-                    ))
-                    .build()
-                    .unwrap(),
-            }
-        }
-    }
+    builder_impl_with_opt_params!(
+        Hashes:"/api/v0/cid/hashes",
+        /// also include numeric codes.
+        numeric:bool,
+        /// list only codecs supported by go-ipfs commands.
+        supported:bool
+    );
 
     #[derive(Debug, Deserialize, EndpointResponse)]
     #[serde(transparent)]
@@ -194,7 +170,7 @@ pub mod hashes {
     #[derive(Debug, Deserialize)]
     #[serde(rename_all = "PascalCase")]
     pub struct Multihash {
-        code: isize,
+        code: Option<isize>,
         name: String,
     }
 }

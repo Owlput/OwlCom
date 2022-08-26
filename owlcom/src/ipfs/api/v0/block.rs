@@ -42,7 +42,6 @@ pub mod get {
         }
     }
 
-    impl EndpointResponse for hyper::body::Bytes {}
 }
 pub mod put {
     use super::*;

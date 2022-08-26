@@ -1,9 +1,5 @@
 use async_trait::async_trait;
-
-use crate::{
-    endpoint_gen, impl_opt_param,
-    traits::{Endpoint, EndpointResponse},
-};
+use crate::{endpoint_gen, impl_opt_param, traits::Endpoint};
 
 endpoint_gen!(
     /// Show IPFS object data.
@@ -11,7 +7,6 @@ endpoint_gen!(
     Cat
 );
 
-impl EndpointResponse for String {}
 #[async_trait]
 impl<'a> Endpoint<String, reqwest::Error> for Cat<'a> {
     /// This endpoint returns a `text/plain` response body.

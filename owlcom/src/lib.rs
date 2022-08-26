@@ -1,6 +1,7 @@
 #![feature(path_file_prefix)]
 #[allow(dead_code)]
 use hyper::{client::HttpConnector, Client};
+use traits::EndpointResponse;
 
 pub mod ipfs;
 pub mod libp2p;
@@ -20,6 +21,9 @@ impl IpfsApi {
         }
     }
 }
+
+impl EndpointResponse for hyper::body::Bytes {}
+impl EndpointResponse for String {}
 
 #[cfg(test)]
 mod tests {

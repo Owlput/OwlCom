@@ -48,12 +48,51 @@ macro_rules! simple_builder_impl {
         pub struct Builder;
         impl<'a> Builder {
             /// Return the `Builder` of this endpoint.
-            pub fn builder(self, client: &'a Client, host: &String) -> $endpoint<'a> {
+            pub fn build(self, client: &'a Client, host: &String) -> $endpoint<'a> {
                 $endpoint {
                     client,
                     request: client.post(host.clone() + $path).build().unwrap(),
                 }
             }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! builder_impl_with_opt_params {
+    ($endpoint:ident:$path:expr,$($(#[$meta:meta])*$name:ident:$type:ty),+) => {
+        #[derive(Debug, Default)]
+        pub struct Builder{
+            opt_params:Option<String>
+        }
+        impl<'a> Builder {
+            pub fn new()->Self{
+                Self::default()
+            }
+            /// Return the `Builder` of this endpoint.
+            pub fn build(self, client: &'a Client, host: &String) -> $endpoint<'a> {
+                $endpoint {
+                    client,
+                    request: client.post(host.clone() + $path + self.opt_params.unwrap_or("".into()).as_str()).build().unwrap(),
+                }
+            }
+            /// Overwrite the current optional params.
+            pub fn set_opt_param(mut self, param: String) -> Self {
+                self.opt_params = Some(param);
+                self
+            }
+            $(
+            $(#[$meta])*
+            pub fn $name(self, arg: $type) -> Self {
+                match self.opt_params {
+                    None=>Self {
+                        opt_params: Some(format!("?{}={}",stringify!($name), arg.to_string())),
+                    },
+                    Some(v)=> Self {
+                        opt_params: Some(format!("{}&{}={}", v,stringify!($name) ,arg.to_string())),
+                    }
+                }
+            })*
         }
     };
 }

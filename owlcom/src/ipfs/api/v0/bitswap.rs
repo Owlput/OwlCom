@@ -62,6 +62,8 @@ pub mod reprovide {
     }
 }
 pub mod stat {
+    use crate::builder_impl_with_opt_params;
+
     use super::*;
     use std::collections::HashMap;
 
@@ -71,27 +73,8 @@ pub mod stat {
         Stat
     );
 
-    #[derive(Debug, Default)]
-    pub struct Builder {
-        opt_params: Option<String>,
-    }
-
-    impl<'a> Builder {
-        pub fn build(self, client: &'a Client, host: &String) -> Stat<'a> {
-            Stat {
-                client,
-                request: client
-                    .post(format!(
-                        "{}/api/v0/bitswap/stat?{}",
-                        host,
-                        self.opt_params.unwrap_or("".into())
-                    ))
-                    .build()
-                    .unwrap(),
-            }
-        }
-    }
-    impl_opt_param!(
+    builder_impl_with_opt_params!(
+        Stat:"/api/v0/bitswap/stat",
         /// Print extra information. Required: no.
         verbose: bool,
         /// Print sizes in human readable format (e.g., 1K 234M 2G). Required: no.

@@ -7,5 +7,6 @@ pub mod cid;
 pub mod get;
 pub mod id;
 pub mod ls;
+pub mod commands;
 
 pub use bootstrap::Bootstrap;
