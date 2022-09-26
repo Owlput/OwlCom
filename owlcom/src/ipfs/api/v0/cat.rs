@@ -1,21 +1,25 @@
+use crate::{endpoint_gen, error::*, impl_opt_param, traits::Endpoint};
 use async_trait::async_trait;
-use crate::{endpoint_gen, impl_opt_param, traits::Endpoint};
 
 endpoint_gen!(
     /// Show IPFS object data.
     /// This endpoint returns a `text/plain` response body.
+    #[derive(Debug)]
     Cat
 );
 
 #[async_trait]
-impl<'a> Endpoint<String, reqwest::Error> for Cat<'a> {
+impl<'a> Endpoint<String, Error> for Cat<'a> {
     /// This endpoint returns a `text/plain` response body.
-    async fn exec(&self) -> Result<String, reqwest::Error> {
-        self.client
-            .execute(self.request.try_clone().unwrap())
-            .await?
-            .text()
-            .await
+    async fn exec(&self) -> Result<String, Error> {
+        let response = match self.client.execute(self.request.try_clone().unwrap()).await {
+            Ok(v) => v,
+            Err(e) => return Err(Error::new(Kind::Reqwest(e))),
+        };
+        match response.text().await {
+            Ok(v) => Ok(v),
+            Err(e) => Err(Error::new(Kind::Reqwest(e))),
+        }
     }
 }
 

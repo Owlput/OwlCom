@@ -1,10 +1,15 @@
 #![feature(path_file_prefix)]
+#![feature(io_error_more)]
 #[allow(dead_code)]
+#[allow(unused)]
 use hyper::{client::HttpConnector, Client};
+use serde_json::Value;
 use traits::EndpointResponse;
 
+pub mod error;
+#[allow(unused_imports)]
 pub mod ipfs;
-pub mod libp2p;
+//pub mod libp2p;
 mod macros;
 pub mod traits;
 
@@ -23,6 +28,7 @@ impl IpfsApi {
 }
 
 impl EndpointResponse for hyper::body::Bytes {}
+impl EndpointResponse for Value {}
 impl EndpointResponse for String {}
 
 #[cfg(test)]

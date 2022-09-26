@@ -1,5 +1,5 @@
 use crate::traits::{Endpoint, EndpointResponse};
-use crate::{endpoint_gen, impl_opt_param, simple_builder_impl};
+use crate::{endpoint_gen, impl_opt_param, simple_builder_impl,error::*};
 use owlcom_derive::{Endpoint, EndpointResponse};
 use serde::Deserialize;
 
@@ -34,7 +34,7 @@ pub mod add {
     }
 
     impl_opt_param!(
-        /// Add default bootstrap nodes. (Deprecated, use 'default' subcommand instead).
+        /// Add default bootstrap nodes. (Deprecated, use 'default' subcommand instead). Required: no.
         /// This function is for `default` argument, function name conflicts with `Default` trait.
         #[deprecated]
         is_default: bool
@@ -68,6 +68,7 @@ pub mod list {
     use super::*;
     endpoint_gen!(
         /// Show peers in the bootstrap list.
+        /// This endpoint takes no argument.
         #[derive(Debug, Endpoint)]
         List
     );
@@ -83,6 +84,7 @@ pub mod rm_all {
     use super::*;
     endpoint_gen!(
         /// Remove all peers from the bootstrap list.
+        /// This endpoint takes no argument.
         #[derive(Debug, Endpoint)]
         RmAll
     );
@@ -108,7 +110,7 @@ pub mod rm {
     }
 
     impl<'a> Builder {
-        /// Required Argument: `peer_id`: The peer to remove from bootstrap list.
+        /// Required Argument: `peer_id` The peer to remove from bootstrap list.
         pub fn build(self, client: &'a Client, host: &String, peer_id: String) -> Rm<'a> {
             Rm {
                 client,
@@ -139,7 +141,8 @@ pub mod rm {
 }
 
 endpoint_gen!(
-    /// Show or edit the list of bootstrap peers.
+    /// Show the list of bootstrap peers.
+    /// This endpoint takes no argument.
     #[derive(Debug, Endpoint)]
     Bootstrap
 );

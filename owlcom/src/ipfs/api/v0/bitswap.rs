@@ -1,5 +1,5 @@
 use crate::traits::{Endpoint, EndpointResponse};
-use crate::{endpoint_gen, impl_opt_param, simple_builder_impl};
+use crate::{endpoint_gen, impl_opt_param, simple_builder_impl,error::*};
 use owlcom_derive::{Endpoint, EndpointResponse};
 use serde::Deserialize;
 

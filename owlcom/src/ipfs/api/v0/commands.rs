@@ -4,6 +4,7 @@ use async_trait::async_trait;
 
 endpoint_gen!(
     /// List all available commands
+    #[derive(Debug)]
     Commands
 );
 
@@ -20,7 +21,7 @@ impl<'a> Endpoint<String, reqwest::Error> for Commands<'a> {
 
 builder_impl_with_opt_params!(
     Commands:"/api/v0/commands",
-    /// Show command flags.
+    /// Show command flags. Required: no.
     flags:bool
 );
 
@@ -31,6 +32,7 @@ pub mod completion {
 
         endpoint_gen!(
             /// Generate bash shell completions.
+            /// This endpoint takes no argument.
             #[derive(Debug)]
             Bash
         );

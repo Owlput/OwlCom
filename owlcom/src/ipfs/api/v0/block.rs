@@ -1,5 +1,5 @@
 use crate::traits::{Endpoint, EndpointResponse};
-use crate::{endpoint_gen, impl_opt_param};
+use crate::{endpoint_gen, error::*, impl_opt_param};
 use async_trait::async_trait;
 use owlcom_derive::{Endpoint, EndpointResponse};
 use serde::Deserialize;
@@ -8,22 +8,20 @@ pub mod get {
     use super::*;
     endpoint_gen!(
         /// Get a raw IPFS block.
+        /// This endpoint receives `octstream`.
         #[derive(Debug)]
         Get
     );
-
     #[async_trait]
-    impl<'a> Endpoint<hyper::body::Bytes, reqwest::Error> for Get<'a> {
-        async fn exec(&self) -> Result<hyper::body::Bytes, reqwest::Error> {
-            match self
-                .client
-                .execute(self.request.try_clone().unwrap())
-                .await?
-                .bytes()
-                .await
-            {
-                Ok(v) => return Ok(v.into()),
-                Err(e) => return Err(e),
+    impl<'a> Endpoint<hyper::body::Bytes, Error> for Get<'a> {
+        async fn exec(&self) -> Result<hyper::body::Bytes, Error> {
+            let response = match self.client.execute(self.request.try_clone().unwrap()).await {
+                Ok(v) => v,
+                Err(e) => return Err(Error::new(Kind::Reqwest(e))),
+            };
+            match response.bytes().await {
+                Ok(v) => Ok(v.into()),
+                Err(e) => Err(Error::new(Kind::Reqwest(e))),
             }
         }
     }
@@ -31,6 +29,7 @@ pub mod get {
     #[derive(Debug, Default)]
     pub struct Builder;
     impl<'a> Builder {
+        /// Required argument: `block_cid` The CID of the block wanted.
         pub fn build(self, client: &'a Client, host: &String, block_cid: &String) -> Get<'a> {
             Get {
                 client,
@@ -41,17 +40,15 @@ pub mod get {
             }
         }
     }
-
 }
 pub mod put {
     use super::*;
+    use crate::traits::EndpointOnce;
     use reqwest::{
         multipart::{Form, Part},
         Client,
     };
     use std::path::Path;
-
-    use crate::{ipfs::api::FileTransferError, traits::EndpointOnce};
 
     /// Store input as an IPFS block.  
     /// The request will be constructed on `exec()` called and can only be used once.
@@ -69,18 +66,22 @@ pub mod put {
     }
 
     #[async_trait]
-    impl<'a, 'b> EndpointOnce<Response, FileTransferError> for Put<'a, 'b> {
-        async fn exec(self) -> Result<Response, FileTransferError> {
+    impl<'a, 'b> EndpointOnce<Response, Error> for Put<'a, 'b> {
+        async fn exec(self) -> Result<Response, Error> {
             if !self.path.exists() {
-                return Err(FileTransferError::FileNotExist);
+                return Err(Error::new(Kind::Fs(std::io::Error::from(
+                    std::io::ErrorKind::NotFound,
+                ))));
             }
             if !self.path.is_file() {
-                return Err(FileTransferError::NotAFile);
+                return Err(Error::new(Kind::Fs(std::io::Error::from(
+                    std::io::ErrorKind::IsADirectory,
+                ))));
             }
             let filename = self.path.file_name().unwrap().to_str().unwrap().to_string(); // This is probably FileTransferError-prone
             let file = match tokio::fs::read(self.path).await {
                 Ok(v) => v,
-                Err(e) => return Err(FileTransferError::Fs(e)),
+                Err(e) => return Err(Error::new(Kind::Fs(e))),
             };
             match self
                 .client
@@ -95,9 +96,9 @@ pub mod put {
             {
                 Ok(res) => match res.json::<Response>().await {
                     Ok(res) => return Ok(res),
-                    Err(e) => return Err(FileTransferError::Reqwest(e)),
+                    Err(e) => return Err(Error::new(Kind::Reqwest(e))),
                 },
-                Err(e) => return Err(FileTransferError::Reqwest(e)),
+                Err(e) => return Err(Error::new(Kind::Reqwest(e))),
             }
         }
     }
@@ -174,7 +175,7 @@ pub mod rm {
         opt_params: Option<String>,
     }
     impl_opt_param!(
-        /// Ignore nonexistent blocks.
+        /// Ignore nonexistent blocks. Required: no.
         force: bool,
         /// Write minimal output. Required: no.
         quiet: bool

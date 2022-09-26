@@ -1,12 +1,12 @@
 use crate::traits::{Endpoint, EndpointResponse};
-use crate::{endpoint_gen, impl_opt_param,builder_impl_with_opt_params};
+use crate::{endpoint_gen, impl_opt_param,builder_impl_with_opt_params,error::*};
 use owlcom_derive::{Endpoint, EndpointResponse};
 use serde::Deserialize;
 
 pub mod base32 {
     use super::*;
     endpoint_gen!(
-        /// Convert CIDs to Base32 CID version 1.
+        /// Convert CID to Base32 CID version 1.
         #[derive(Debug, Endpoint)]
         Base32
     );
@@ -15,6 +15,7 @@ pub mod base32 {
     pub struct Builder;
 
     impl<'a> Builder {
+        /// Required argument: `cid` The CID of your choice to convert.
         pub fn build(self, client: &'a Client, host: &String, cid: String) -> Base32<'a> {
             Base32 {
                 client,
@@ -48,9 +49,9 @@ pub mod bases {
     }
 
     impl_opt_param!(
-        /// also include the single letter prefixes in addition to the code.
+        /// Also include the single letter prefixes in addition to the code. Required: no.
         prefix: bool,
-        /// also include numeric codes.
+        /// Also include numeric codes. Required: no.
         numeric: bool
     );
 
@@ -76,9 +77,9 @@ pub mod codecs {
 
     builder_impl_with_opt_params!(
         Codecs:"/api/v0/cid/hashes",
-        /// also include numeric codes.
+        /// Also include numeric codes. Required: no.
         numeric:bool,
-        /// list only codecs supported by go-ipfs commands.
+        /// List only codecs supported by go-ipfs commands. Required: no.
         supported:bool
     );
 
@@ -109,7 +110,7 @@ pub mod format {
     }
 
     impl<'a> Builder {
-        /// Required argument: `cid` :CID to format.
+        /// Required argument: `cid` The CID to format.
         pub fn build(self, client: &'a Client, host: &String, cid: String) -> Format<'a> {
             Format {
                 client,
@@ -127,13 +128,13 @@ pub mod format {
     }
 
     impl_opt_param!(
-        /// Printf style format string. Default: `%s`.
+        /// Printf style format string. Default: `%s`. Required: no.
         f: String,
-        /// CID version to convert to.
+        /// CID version to convert to. Required: no.
         v: String,
-        /// CID multicodec to convert to.
+        /// CID multicodec to convert to. Required: no.
         mc: String,
-        /// Multibase to display CID in.
+        /// Multibase to display CID in. Required: no.
         b: String
     );
 
@@ -146,18 +147,18 @@ pub mod format {
 }
 pub mod hashes {
     
-
     use super::*;
     endpoint_gen!(
         /// List available multihashes.
+        #[derive(Debug,Endpoint)]
         Hashes
     );
 
     builder_impl_with_opt_params!(
         Hashes:"/api/v0/cid/hashes",
-        /// also include numeric codes.
+        /// Also include numeric codes. Required: no.
         numeric:bool,
-        /// list only codecs supported by go-ipfs commands.
+        /// List only codecs supported by go-ipfs commands. Required: no.
         supported:bool
     );
 

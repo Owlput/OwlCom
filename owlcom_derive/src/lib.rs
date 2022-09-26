@@ -13,10 +13,17 @@ fn impl_endpoint(ast: &syn::DeriveInput) -> TokenStream {
     let gen = quote! {
         use async_trait::async_trait;
         #[async_trait]
-        impl<'a> Endpoint<Response,reqwest::Error> for #name<'a>
+        impl<'a> Endpoint<Response,Error> for #name<'a>
         {
-            async fn exec(&self)->Result<Response,reqwest::Error>{
-                self.client.execute(self.request.try_clone().unwrap()).await?.json::<Response>().await
+            async fn exec(&self)->Result<Response,Error>{
+                let response = match self.client.execute(self.request.try_clone().unwrap()).await{
+                    Ok(v)=>v,
+                    Err(e)=>return Err(Error::new(Kind::Reqwest(e)))
+                };
+                match response.json::<Response>().await{
+                    Ok(v)=>Ok(v),
+                    Err(e)=>Err(Error::new(Kind::Reqwest(e)))
+                }
             }
         }
     };
