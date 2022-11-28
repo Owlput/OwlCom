@@ -10,7 +10,12 @@ tokio ={version="1",features = ["full"]}
 hyper = { version = "0.14", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-#libp2p = "0.46"
+libp2p = {version = "0.46", optional = true}
 reqwest = {version = "0.11", features=["json","multipart","stream"]}
 owlcom_derive = {path="../owlcom_derive"}
 async-trait = "0.1"
+
+[features]
+ipfs=[]
+p2p=["dep:libp2p"]
+full=["ipfs","p2p"]

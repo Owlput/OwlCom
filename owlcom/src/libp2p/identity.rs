@@ -1,4 +1,6 @@
-use libp2p::{identity, PeerId};
+use std::fs;
+
+use libp2p::{identity::{self, Keypair}, PeerId};
 
 pub struct IdentityUnion {
     keypair: identity::Keypair,
@@ -26,5 +28,11 @@ impl IdentityUnion {
     }
     pub fn get_peer_id(&self) -> PeerId {
         self.peer_id.clone()
+    }
+    pub fn from_rsa_pkcs8_private(path:&Path)->Self{
+        let key = fs::read(path).unwrap();
+        let keypair = Keypair::rsa_from_pkcs8(&mut key).unwrap();
+        let peer_id = PeerId::from(keypair.public());
+        IdentityUnion { keypair, peer_id }
     }
 }
