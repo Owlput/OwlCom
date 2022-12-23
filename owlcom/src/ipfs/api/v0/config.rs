@@ -1,35 +1,27 @@
 #[allow(unused)]
 use crate::traits::{Endpoint, EndpointResponse};
-use crate::{
-    builder_impl_with_opt_params, endpoint_gen,
-    error::{Error, Kind},
-    impl_opt_param, simple_builder_impl,
-};
+use crate::{endpoint_gen, error::Error, impl_opt_param, simple_builder_impl};
 use async_trait::async_trait;
-use owlcom_derive::{Endpoint, EndpointResponse};
-use serde::Deserialize;
-use serde_json::Value;
-
 endpoint_gen!(
     /// Get and set IPFS config values. This endpoint returns a JSON object in `serde_json::Value`.
     #[derive(Debug)]
     Config
 );
-
+type Response = serde_json::Value;
 #[async_trait]
-impl<'a> Endpoint<Value, Error> for Config<'a> {
-    async fn exec(&self) -> Result<Value, Error> {
+impl<'a> Endpoint<Response> for Config<'a> {
+    async fn exec(&self) -> Result<Response, Error> {
         let response = match self.client.execute(self.request.try_clone().unwrap()).await {
             Ok(v) => v,
-            Err(e) => return Err(Error::new(Kind::Reqwest(e))),
+            Err(e) => return Err(Error::Reqwest(e)),
         };
         let text = match response.text().await {
             Ok(v) => v,
-            Err(e) => return Err(Error::new(Kind::Reqwest(e))),
+            Err(e) => return Err(Error::Reqwest(e)),
         };
         match serde_json::from_str(&text) {
             Ok(v) => Ok(v),
-            Err(e) => Err(Error::new(Kind::SerdeJson(e))),
+            Err(e) => Err(Error::SerdeJson(e)),
         }
     }
 }
@@ -82,22 +74,25 @@ impl_opt_param!(
 pub mod edit {
     use super::*;
 
-    type Response = String;
     endpoint_gen!(
         /// Open the config file for editing in $EDITOR.
         #[derive(Debug)]
         Edit
     );
     #[async_trait]
-    impl<'a> Endpoint<Response, Error> for Edit<'a> {
+    impl<'a> Endpoint<Response> for Edit<'a> {
         async fn exec(&self) -> Result<Response, Error> {
             let response = match self.client.execute(self.request.try_clone().unwrap()).await {
                 Ok(v) => v,
-                Err(e) => return Err(Error::new(Kind::Reqwest(e))),
+                Err(e) => return Err(Error::Reqwest(e)),
             };
-            match response.text().await {
+            let text = match response.text().await {
+                Ok(v) => v,
+                Err(e) => return Err(Error::Reqwest(e)),
+            };
+            match serde_json::from_str(&text) {
                 Ok(v) => Ok(v),
-                Err(e) => Err(Error::new(Kind::Reqwest(e))),
+                Err(e) => Err(Error::SerdeJson(e)),
             }
         }
     }

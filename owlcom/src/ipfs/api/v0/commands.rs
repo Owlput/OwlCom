@@ -1,3 +1,4 @@
+use crate::error::Error;
 use crate::traits::Endpoint;
 use crate::{builder_impl_with_opt_params, endpoint_gen, simple_builder_impl};
 use async_trait::async_trait;
@@ -8,14 +9,21 @@ endpoint_gen!(
     Commands
 );
 
+type Response = String;
+
 #[async_trait]
-impl<'a> Endpoint<String, reqwest::Error> for Commands<'a> {
-    async fn exec(&self) -> Result<String, reqwest::Error> {
-        self.client
-            .execute(self.request.try_clone().unwrap())
-            .await?
-            .text()
-            .await
+impl<'a> Endpoint<Response> for Commands<'a> {
+    async fn exec(&self) -> Result<Response, Error> {
+        let res = match self.client.execute(self.request.try_clone().unwrap()).await {
+            Ok(res) => res,
+            Err(e) => return Err(Error::Reqwest(e)),
+        }
+        .text()
+        .await;
+        match res {
+            Ok(v) => Ok(v),
+            Err(e) => Err(Error::Reqwest(e)),
+        }
     }
 }
 
@@ -38,13 +46,18 @@ pub mod completion {
         );
 
         #[async_trait]
-        impl<'a> Endpoint<String, reqwest::Error> for Bash<'a> {
-            async fn exec(&self) -> Result<String, reqwest::Error> {
-                self.client
-                    .execute(self.request.try_clone().unwrap())
-                    .await?
-                    .text()
-                    .await
+        impl<'a> Endpoint<Response> for Bash<'a> {
+            async fn exec(&self) -> Result<Response, Error> {
+                let res = match self.client.execute(self.request.try_clone().unwrap()).await {
+                    Ok(v) => v,
+                    Err(e) => return Err(Error::Reqwest(e)),
+                }
+                .text()
+                .await;
+                match res{
+                    Ok(v) => Ok(v),
+                    Err(e) => Err(Error::Reqwest(e))
+                }
             }
         }
 

@@ -7,11 +7,10 @@ use serde_json::Value;
 use traits::EndpointResponse;
 
 pub mod error;
-#[allow(unused_imports)]
-#[cfg(feature="ipfs")]
+#[cfg(feature = "ipfs")]
 pub mod ipfs;
 
-#[cfg(feature="p2p")]
+#[cfg(feature = "p2p")]
 pub mod libp2p;
 mod macros;
 pub mod traits;

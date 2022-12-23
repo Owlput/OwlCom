@@ -73,7 +73,7 @@ macro_rules! builder_impl_with_opt_params {
             pub fn build(self, client: &'a Client, host: &String) -> $endpoint<'a> {
                 $endpoint {
                     client,
-                    request: client.post(host.clone() + $path + &self.opt_params.unwrap_or("".into())).build().unwrap(),
+                    request: client.post(format!("{}{}{}",host,$path,self.opt_params.unwrap_or("".into()))).build().unwrap(),
                 }
             }
             /// Overwrite the current optional params.

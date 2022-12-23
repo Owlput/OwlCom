@@ -25,12 +25,12 @@ pub struct Add<'a, 'b> {
 }
 
 #[async_trait]
-impl<'a, 'b> EndpointOnce<Response, Error> for Add<'a, 'b> {
-    async fn exec(self) -> Result<Response, Error> {
+impl<'a, 'b> EndpointOnce<Response> for Add<'a, 'b> {
+    async fn exec(self) -> Result<Response,Error> {
         let filename = self.path.to_str().unwrap().to_string();
         let file = match tokio::fs::read(self.path).await {
             Ok(v) => v,
-            Err(e) => return Err(Error::new(Kind::Fs(e))),
+            Err(e) => return Err(Error::Io(e)),
         };
         match self
             .client
@@ -45,9 +45,9 @@ impl<'a, 'b> EndpointOnce<Response, Error> for Add<'a, 'b> {
         {
             Ok(res) => match res.json().await {
                 Ok(res) => return Ok(res),
-                Err(e) => return Err(Error::new(Kind::Reqwest(e))),
+                Err(e) => return Err(Error::Reqwest(e)),
             },
-            Err(e) => return Err(Error::new(Kind::Reqwest(e))),
+            Err(e) => return Err(Error::Reqwest(e)),
         }
     }
 }

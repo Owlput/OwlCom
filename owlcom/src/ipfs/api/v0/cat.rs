@@ -8,17 +8,18 @@ endpoint_gen!(
     Cat
 );
 
+type Response = String;
 #[async_trait]
-impl<'a> Endpoint<String, Error> for Cat<'a> {
+impl<'a> Endpoint<Response> for Cat<'a> {
     /// This endpoint returns a `text/plain` response body.
-    async fn exec(&self) -> Result<String, Error> {
+    async fn exec(&self) -> Result<Response, Error> {
         let response = match self.client.execute(self.request.try_clone().unwrap()).await {
             Ok(v) => v,
-            Err(e) => return Err(Error::new(Kind::Reqwest(e))),
+            Err(e) => return Err(Error::Reqwest(e)),
         };
         match response.text().await {
             Ok(v) => Ok(v),
-            Err(e) => Err(Error::new(Kind::Reqwest(e))),
+            Err(e) => Err(Error::Reqwest(e)),
         }
     }
 }

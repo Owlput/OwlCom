@@ -6,6 +6,8 @@ use serde::Deserialize;
 
 pub mod get {
     use super::*;
+
+    type Response = hyper::body::Bytes;
     endpoint_gen!(
         /// Get a raw IPFS block.
         /// This endpoint receives `octstream`.
@@ -13,15 +15,15 @@ pub mod get {
         Get
     );
     #[async_trait]
-    impl<'a> Endpoint<hyper::body::Bytes, Error> for Get<'a> {
-        async fn exec(&self) -> Result<hyper::body::Bytes, Error> {
+    impl<'a> Endpoint<Response> for Get<'a> {
+        async fn exec(&self) -> Result<Response, Error> {
             let response = match self.client.execute(self.request.try_clone().unwrap()).await {
                 Ok(v) => v,
-                Err(e) => return Err(Error::new(Kind::Reqwest(e))),
+                Err(e) => return Err(Error::Reqwest(e)),
             };
             match response.bytes().await {
                 Ok(v) => Ok(v.into()),
-                Err(e) => Err(Error::new(Kind::Reqwest(e))),
+                Err(e) => Err(Error::Reqwest(e)),
             }
         }
     }
@@ -43,13 +45,10 @@ pub mod get {
 }
 pub mod put {
     use super::*;
-    use crate::traits::EndpointOnce;
-    use reqwest::{
-        multipart::{Form, Part},
-        Client,
-    };
+    use reqwest::Client;
     use std::path::Path;
-
+    use reqwest::multipart::{Form,Part};
+    use crate::traits::EndpointOnce;
     /// Store input as an IPFS block.  
     /// The request will be constructed on `exec()` called and can only be used once.
     pub struct Put<'a, 'b> {
@@ -66,22 +65,22 @@ pub mod put {
     }
 
     #[async_trait]
-    impl<'a, 'b> EndpointOnce<Response, Error> for Put<'a, 'b> {
+    impl<'a, 'b> EndpointOnce<Response> for Put<'a, 'b> {
         async fn exec(self) -> Result<Response, Error> {
             if !self.path.exists() {
-                return Err(Error::new(Kind::Fs(std::io::Error::from(
+                return Err(Error::Io(std::io::Error::from(
                     std::io::ErrorKind::NotFound,
-                ))));
+                )));
             }
             if !self.path.is_file() {
-                return Err(Error::new(Kind::Fs(std::io::Error::from(
+                return Err(Error::Io(std::io::Error::from(
                     std::io::ErrorKind::IsADirectory,
-                ))));
+                )));
             }
             let filename = self.path.file_name().unwrap().to_str().unwrap().to_string(); // This is probably FileTransferError-prone
             let file = match tokio::fs::read(self.path).await {
                 Ok(v) => v,
-                Err(e) => return Err(Error::new(Kind::Fs(e))),
+                Err(e) => return Err(Error::Io(e)),
             };
             match self
                 .client
@@ -96,9 +95,9 @@ pub mod put {
             {
                 Ok(res) => match res.json::<Response>().await {
                     Ok(res) => return Ok(res),
-                    Err(e) => return Err(Error::new(Kind::Reqwest(e))),
+                    Err(e) => return Err(Error::Reqwest(e)),
                 },
-                Err(e) => return Err(Error::new(Kind::Reqwest(e))),
+                Err(e) => return Err(Error::Reqwest(e)),
             }
         }
     }
