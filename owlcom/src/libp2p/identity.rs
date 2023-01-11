@@ -5,6 +5,7 @@ use libp2p::{
     PeerId,
 };
 
+#[derive(Debug,Clone)]
 pub struct IdentityUnion {
     keypair: identity::Keypair,
     peer_id: PeerId,
